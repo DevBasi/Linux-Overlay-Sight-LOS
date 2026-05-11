@@ -146,7 +146,7 @@ cd Linux-Overlay-Sight-LOS
 
 ```
 aim-overlay/
-├── aim_overlay.py   # всё приложение (~280 строк, один файл)
+├── aim_overlay.py   # всё приложение (~420 строк, один файл)
 ├── setup.sh         # создание venv + установка PyQt6
 ├── run.sh           # запуск
 └── .venv/           # изолированное окружение (не в git)
