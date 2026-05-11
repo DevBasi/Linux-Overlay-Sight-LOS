@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-AIM Overlay — crosshair overlay for KDE Plasma / XWayland
+LOS — Linux Overlay Sight · crosshair overlay for KDE Plasma / XWayland
 Stays above fullscreen XWayland apps (Wine, Stalcraft X, etc.)
 """
 
 import sys
 import json
 import os
+import locale
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
@@ -22,7 +23,7 @@ from PyQt6.QtGui import (
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-CONFIG_PATH = Path.home() / ".config" / "aim-overlay.json"
+CONFIG_PATH = Path.home() / ".config" / "los.json"
 
 DEFAULTS: dict = {
     "color":         "#00FF41",
@@ -37,6 +38,68 @@ DEFAULTS: dict = {
 }
 
 STYLE_LABELS = ["dot", "cross", "dot+cross", "circle"]
+
+# ── i18n ──────────────────────────────────────────────────────────────────────
+
+def _detect_lang() -> str:
+    for var in ("LANG", "LANGUAGE", "LC_ALL", "LC_MESSAGES"):
+        if os.environ.get(var, "").startswith("ru"):
+            return "ru"
+    try:
+        code = locale.getlocale()[0] or ""
+        if code.startswith("ru"):
+            return "ru"
+    except Exception:
+        pass
+    return "en"
+
+LANG = _detect_lang()
+
+_S: dict = {
+    "ru": {
+        "win_title":    "LOS — Настройки",
+        "grp_cross":    "Прицел",
+        "grp_color":    "Цвет",
+        "grp_opacity":  "Прозрачность",
+        "lbl_style":    "Стиль:",
+        "lbl_size":     "Размер:",
+        "lbl_thick":    "Толщина:",
+        "lbl_gap":      "Зазор:",
+        "lbl_color":    "Цвет:",
+        "lbl_outline":  "Обводка",
+        "lbl_ol_col":   "Цвет обводки:",
+        "pick_color":   "Выбор цвета",
+        "disable":      "Выключить",
+        "enable":       "Включить",
+        "settings":     "Настройки…",
+        "quit":         "Выход",
+        "status_on":    "вкл",
+        "status_off":   "выкл",
+    },
+    "en": {
+        "win_title":    "LOS — Settings",
+        "grp_cross":    "Crosshair",
+        "grp_color":    "Color",
+        "grp_opacity":  "Opacity",
+        "lbl_style":    "Style:",
+        "lbl_size":     "Size:",
+        "lbl_thick":    "Thickness:",
+        "lbl_gap":      "Gap:",
+        "lbl_color":    "Color:",
+        "lbl_outline":  "Outline",
+        "lbl_ol_col":   "Outline color:",
+        "pick_color":   "Pick color",
+        "disable":      "Disable",
+        "enable":       "Enable",
+        "settings":     "Settings…",
+        "quit":         "Quit",
+        "status_on":    "on",
+        "status_off":   "off",
+    },
+}
+
+def T(key: str) -> str:
+    return _S[LANG].get(key, key)
 
 
 def load_config() -> dict:
@@ -169,7 +232,7 @@ class SettingsDialog(QDialog):
     def __init__(self, cfg: dict, parent=None) -> None:
         super().__init__(parent)
         self.cfg = dict(cfg)
-        self.setWindowTitle("AIM Overlay — Settings")
+        self.setWindowTitle(T("win_title"))
         self.setMinimumWidth(380)
         self._build()
 
@@ -177,50 +240,50 @@ class SettingsDialog(QDialog):
         root = QVBoxLayout(self)
 
         # ── Crosshair group ──
-        ch_box = QGroupBox("Прицел")
+        ch_box = QGroupBox(T("grp_cross"))
         form = QFormLayout(ch_box)
 
         self.style_cb = QComboBox()
         self.style_cb.addItems(STYLE_LABELS)
         self.style_cb.setCurrentText(self.cfg["style"])
-        form.addRow("Стиль:", self.style_cb)
+        form.addRow(T("lbl_style"), self.style_cb)
 
         self.size_sp = QSpinBox(); self.size_sp.setRange(1, 30)
         self.size_sp.setValue(self.cfg["size"])
-        form.addRow("Размер:", self.size_sp)
+        form.addRow(T("lbl_size"), self.size_sp)
 
         self.thick_sp = QSpinBox(); self.thick_sp.setRange(1, 10)
         self.thick_sp.setValue(self.cfg["thickness"])
-        form.addRow("Толщина:", self.thick_sp)
+        form.addRow(T("lbl_thick"), self.thick_sp)
 
         self.gap_sp = QSpinBox(); self.gap_sp.setRange(0, 20)
         self.gap_sp.setValue(self.cfg["gap"])
-        form.addRow("Зазор:", self.gap_sp)
+        form.addRow(T("lbl_gap"), self.gap_sp)
 
         root.addWidget(ch_box)
 
         # ── Color group ──
-        col_box = QGroupBox("Цвет")
+        col_box = QGroupBox(T("grp_color"))
         col_form = QFormLayout(col_box)
 
         self.color_btn = _make_swatch(self.cfg["color"])
         self.color_btn.clicked.connect(
             lambda: self._pick("color", self.color_btn))
-        col_form.addRow("Цвет:", self.color_btn)
+        col_form.addRow(T("lbl_color"), self.color_btn)
 
-        self.outline_chk = QCheckBox("Обводка")
+        self.outline_chk = QCheckBox(T("lbl_outline"))
         self.outline_chk.setChecked(self.cfg["outline"])
         col_form.addRow("", self.outline_chk)
 
         self.outline_btn = _make_swatch(self.cfg["outline_color"])
         self.outline_btn.clicked.connect(
             lambda: self._pick("outline_color", self.outline_btn))
-        col_form.addRow("Цвет обводки:", self.outline_btn)
+        col_form.addRow(T("lbl_ol_col"), self.outline_btn)
 
         root.addWidget(col_box)
 
         # ── Opacity group ──
-        op_box = QGroupBox("Прозрачность")
+        op_box = QGroupBox(T("grp_opacity"))
         op_row = QHBoxLayout(op_box)
         self.opacity_sl = QSlider(Qt.Orientation.Horizontal)
         self.opacity_sl.setRange(50, 255)
@@ -244,7 +307,7 @@ class SettingsDialog(QDialog):
 
     def _pick(self, key: str, btn: QPushButton) -> None:
         c = QColorDialog.getColor(
-            QColor(self.cfg[key]), self, "Выбор цвета",
+            QColor(self.cfg[key]), self, T("pick_color"),
             QColorDialog.ColorDialogOption.DontUseNativeDialog,
         )
         if c.isValid():
@@ -311,23 +374,23 @@ class TrayController:
 
     def _refresh_icon(self) -> None:
         self.tray.setIcon(_make_tray_icon(self.cfg["color"]))
-        status = "вкл" if self.cfg["enabled"] else "выкл"
-        self.tray.setToolTip(f"AIM Overlay [{status}]")
+        status = T("status_on") if self.cfg["enabled"] else T("status_off")
+        self.tray.setToolTip(f"LOS [{status}]")
 
     def _build_menu(self) -> None:
         menu = QMenu()
 
-        self._toggle_act = QAction("Выключить", menu)
+        self._toggle_act = QAction(T("disable"), menu)
         self._toggle_act.triggered.connect(self._toggle)
         menu.addAction(self._toggle_act)
 
-        settings_act = QAction("Настройки…", menu)
+        settings_act = QAction(T("settings"), menu)
         settings_act.triggered.connect(self._open_settings)
         menu.addAction(settings_act)
 
         menu.addSeparator()
 
-        quit_act = QAction("Выход", menu)
+        quit_act = QAction(T("quit"), menu)
         quit_act.triggered.connect(QApplication.quit)
         menu.addAction(quit_act)
 
@@ -341,7 +404,7 @@ class TrayController:
     def _toggle(self) -> None:
         self.cfg["enabled"] = not self.cfg["enabled"]
         self._toggle_act.setText(
-            "Включить" if not self.cfg["enabled"] else "Выключить"
+            T("enable") if not self.cfg["enabled"] else T("disable")
         )
         self.overlay.apply(self.cfg)
         self._refresh_icon()
@@ -364,7 +427,7 @@ def main() -> None:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     app = QApplication(sys.argv)
-    app.setApplicationName("AIM Overlay")
+    app.setApplicationName("LOS")
     app.setQuitOnLastWindowClosed(False)
 
     cfg     = load_config()
