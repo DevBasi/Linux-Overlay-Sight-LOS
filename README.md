@@ -55,8 +55,8 @@
 ## Установка
 
 ```bash
-git clone https://github.com/ВАШ_НИК/aim-overlay.git
-cd aim-overlay
+git clone https://github.com/DevBasi/Linux-Overlay-Sight-LOS.git
+cd Linux-Overlay-Sight-LOS
 ./setup.sh
 ```
 
