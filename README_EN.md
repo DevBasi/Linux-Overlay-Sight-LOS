@@ -55,8 +55,8 @@ Works above **fullscreen** games via Wine / Proton on **XWayland** — where mos
 ## Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/los.git
-cd los
+git clone https://github.com/DevBasi/Linux-Overlay-Sight-LOS.git
+cd Linux-Overlay-Sight-LOS
 ./setup.sh
 ```
 
