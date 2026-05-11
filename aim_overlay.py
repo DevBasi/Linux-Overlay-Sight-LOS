@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 LOS — Linux Overlay Sight · crosshair overlay for KDE Plasma / XWayland
 Stays above fullscreen XWayland apps (Wine, Stalcraft X, etc.)
@@ -21,14 +21,13 @@ from PyQt6.QtGui import (
     QPainter, QColor, QPen, QBrush, QAction, QIcon, QPixmap,
 )
 
-# ── Config ────────────────────────────────────────────────────────────────────
 
 CONFIG_PATH = Path.home() / ".config" / "los.json"
 
 DEFAULTS: dict = {
     "color":         "#00FF41",
     "outline_color": "#000000",
-    "style":         "dot",      # dot | cross | dot+cross | circle
+    "style":         "dot",      
     "size":          5,
     "thickness":     2,
     "gap":           4,
@@ -39,7 +38,6 @@ DEFAULTS: dict = {
 
 STYLE_LABELS = ["dot", "cross", "dot+cross", "circle"]
 
-# ── i18n ──────────────────────────────────────────────────────────────────────
 
 def _detect_lang() -> str:
     for var in ("LANG", "LANGUAGE", "LC_ALL", "LC_MESSAGES"):
@@ -114,7 +112,6 @@ def save_config(cfg: dict) -> None:
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
 
 
-# ── Overlay window ─────────────────────────────────────────────────────────────
 
 class CrosshairOverlay(QWidget):
     def __init__(self, cfg: dict) -> None:
@@ -123,10 +120,6 @@ class CrosshairOverlay(QWidget):
         self._build_window()
 
     def _build_window(self) -> None:
-        # X11BypassWindowManagerHint = override-redirect: the window bypasses KWin
-        # and lives at the top of the raw X stacking order, above Wine/Proton
-        # fullscreen windows which are also override-redirect.
-        # A 250 ms timer keeps re-raising us whenever the game redraws its window.
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.X11BypassWindowManagerHint
@@ -146,7 +139,6 @@ class CrosshairOverlay(QWidget):
         self.cfg = cfg
         self.update()
 
-    # ── paint ──────────────────────────────────────────────────────────────────
 
     def paintEvent(self, _event) -> None:
         if not self.cfg.get("enabled", True):
@@ -177,7 +169,6 @@ class CrosshairOverlay(QWidget):
         p.end()
 
 
-# ── Drawing primitives ─────────────────────────────────────────────────────────
 
 def _rgba(hex_color: str, alpha: int) -> QColor:
     c = QColor(hex_color)
@@ -226,7 +217,6 @@ def _draw_circle(p: QPainter, cx, cy, size, thick, color, outline) -> None:
     p.drawEllipse(QPoint(cx, cy), r, r)
 
 
-# ── Settings dialog ────────────────────────────────────────────────────────────
 
 class SettingsDialog(QDialog):
     def __init__(self, cfg: dict, parent=None) -> None:
@@ -239,7 +229,6 @@ class SettingsDialog(QDialog):
     def _build(self) -> None:
         root = QVBoxLayout(self)
 
-        # ── Crosshair group ──
         ch_box = QGroupBox(T("grp_cross"))
         form = QFormLayout(ch_box)
 
@@ -262,7 +251,6 @@ class SettingsDialog(QDialog):
 
         root.addWidget(ch_box)
 
-        # ── Color group ──
         col_box = QGroupBox(T("grp_color"))
         col_form = QFormLayout(col_box)
 
@@ -282,7 +270,6 @@ class SettingsDialog(QDialog):
 
         root.addWidget(col_box)
 
-        # ── Opacity group ──
         op_box = QGroupBox(T("grp_opacity"))
         op_row = QHBoxLayout(op_box)
         self.opacity_sl = QSlider(Qt.Orientation.Horizontal)
@@ -296,7 +283,6 @@ class SettingsDialog(QDialog):
         op_row.addWidget(self.opacity_lbl)
         root.addWidget(op_box)
 
-        # ── Buttons ──
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |
             QDialogButtonBox.StandardButton.Cancel
@@ -339,7 +325,6 @@ def _apply_swatch(btn: QPushButton, hex_color: str) -> None:
     )
 
 
-# ── Tray icon ──────────────────────────────────────────────────────────────────
 
 def _make_tray_icon(hex_color: str) -> QIcon:
     px = QPixmap(22, 22)
@@ -361,7 +346,6 @@ def _make_tray_icon(hex_color: str) -> QIcon:
     return QIcon(px)
 
 
-# ── Tray controller ────────────────────────────────────────────────────────────
 
 class TrayController:
     def __init__(self, overlay: CrosshairOverlay, cfg: dict) -> None:
@@ -419,10 +403,8 @@ class TrayController:
             save_config(self.cfg)
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    # Force XWayland so _NET_WM_WINDOW_TYPE tricks work above Wine fullscreen
     if "WAYLAND_DISPLAY" in os.environ and "QT_QPA_PLATFORM" not in os.environ:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
@@ -434,7 +416,7 @@ def main() -> None:
     overlay = CrosshairOverlay(cfg)
     overlay.show()
 
-    _tray = TrayController(overlay, cfg)  # keep alive
+    _tray = TrayController(overlay, cfg)
 
     sys.exit(app.exec())
 
