@@ -145,7 +145,7 @@ Can be edited manually or deleted to reset to defaults.
 
 ```
 los/
-├── aim_overlay.py   # entire app (~300 lines, single file)
+├── aim_overlay.py   # entire app (~420 lines, single file)
 ├── setup.sh         # create venv + install PyQt6
 ├── run.sh           # launch script
 └── .venv/           # isolated environment (not in git)
