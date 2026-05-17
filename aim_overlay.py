@@ -156,7 +156,18 @@ class CursorLocker:
             libX11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
             libX11.XFlush.restype  = ctypes.c_int
             libX11.XFlush.argtypes = [ctypes.c_void_p]
-            libX11.XQueryPointer.restype = ctypes.c_int
+            libX11.XQueryPointer.restype  = ctypes.c_int
+            libX11.XQueryPointer.argtypes = [
+                ctypes.c_void_p,                  # Display*
+                ctypes.c_ulong,                   # Window
+                ctypes.POINTER(ctypes.c_ulong),   # root_return
+                ctypes.POINTER(ctypes.c_ulong),   # child_return
+                ctypes.POINTER(ctypes.c_int),     # root_x_return
+                ctypes.POINTER(ctypes.c_int),     # root_y_return
+                ctypes.POINTER(ctypes.c_int),     # win_x_return
+                ctypes.POINTER(ctypes.c_int),     # win_y_return
+                ctypes.POINTER(ctypes.c_uint),    # mask_return
+            ]
 
             display_name = os.environ.get("DISPLAY", ":0").encode()
             display = libX11.XOpenDisplay(display_name)
@@ -230,6 +241,8 @@ class CrosshairOverlay(QWidget):
         self.cfg = cfg
         self._build_window()
 
+    _OVERLAY_SIDE = 400
+
     def _build_window(self) -> None:
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -239,8 +252,18 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+        # Small centered window instead of a full-screen overlay: a screen-sized
+        # top-most XWayland surface interferes with fullscreen games' pointer
+        # confinement under KWin — after the game drops and re-acquires its
+        # grab (e.g. opening then closing the inventory in Stalcraft) the
+        # cursor escapes to a second monitor. Limiting the overlay to the
+        # crosshair area keeps the game's grab intact.
         geom = QApplication.primaryScreen().geometry()
-        self.setGeometry(geom)
+        side = self._OVERLAY_SIDE
+        x = geom.x() + (geom.width()  - side) // 2
+        y = geom.y() + (geom.height() - side) // 2
+        self.setGeometry(x, y, side, side)
 
         self._raise_timer = QTimer(self)
         self._raise_timer.timeout.connect(self.raise_)
