@@ -105,7 +105,6 @@ def load_config() -> dict:
         cfg = {**DEFAULTS, **json.loads(CONFIG_PATH.read_text())}
     except Exception:
         return dict(DEFAULTS)
-    # Keep only known keys — drops obsolete entries from previous versions.
     return {k: cfg[k] for k in DEFAULTS}
 
 
@@ -117,13 +116,11 @@ def save_config(cfg: dict) -> None:
 
 
 class CrosshairOverlay(QWidget):
-    # 400 px covers the largest configurable crosshair (size 30 → circle r=180).
     _SIDE = 400
 
     def __init__(self, cfg: dict) -> None:
         super().__init__()
         self.cfg = cfg
-        # Cached paint primitives — rebuilt only when config changes.
         self._color       = QColor()
         self._outline_col = QColor()
         self._pen_color   = QPen()
@@ -141,10 +138,6 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-        # Small window centered on the primary screen. A screen-spanning
-        # XWayland overlay breaks fullscreen games' pointer confinement under
-        # KWin — after the game toggles its grab off/on (e.g. inventory in
-        # Stalcraft) the cursor escapes to a second monitor.
         geom = QApplication.primaryScreen().geometry()
         s = self._SIDE
         self.setGeometry(
@@ -153,8 +146,6 @@ class CrosshairOverlay(QWidget):
             s, s,
         )
 
-        # Override-redirect windows stay on top reliably — raise once per
-        # second to recover from rare edge cases without spamming X.
         self._raise_timer = QTimer(self)
         self._raise_timer.timeout.connect(self.raise_)
         self._raise_timer.start(1000)
@@ -444,7 +435,7 @@ def main() -> None:
     overlay = CrosshairOverlay(cfg)
     overlay.show()
 
-    _tray = TrayController(overlay, cfg)  # keep alive
+    _tray = TrayController(overlay, cfg)  
 
     sys.exit(app.exec())
 
