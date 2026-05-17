@@ -1,6 +1,6 @@
 pkgbase = linux-overlay-sight
 	pkgdesc = Crosshair overlay for Linux games on KDE Plasma / XWayland
-	pkgver = 1.0.1
+	pkgver = 1.0.2
 	pkgrel = 1
 	url = https://github.com/DevBasi/Linux-Overlay-Sight-LOS
 	arch = any
@@ -15,7 +15,7 @@ pkgbase = linux-overlay-sight
 	depends = hicolor-icon-theme
 	optdepends = libxtst: cursor confinement on multi-monitor X11/XWayland setups
 	install = linux-overlay-sight.install
-	source = linux-overlay-sight-1.0.1.tar.gz::https://github.com/DevBasi/Linux-Overlay-Sight-LOS/archive/refs/tags/v1.0.1.tar.gz
+	source = linux-overlay-sight-1.0.2.tar.gz::https://github.com/DevBasi/Linux-Overlay-Sight-LOS/archive/refs/tags/v1.0.2.tar.gz
 	sha256sums = SKIP
 
 pkgname = linux-overlay-sight

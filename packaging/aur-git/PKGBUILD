@@ -1,7 +1,7 @@
 # Maintainer: DevBasi <https://github.com/DevBasi>
 pkgname=linux-overlay-sight-git
 _pkgname=linux-overlay-sight
-pkgver=1.0.0.r0.g0000000
+pkgver=1.0.2.r0.g0000000
 pkgrel=1
 pkgdesc="Crosshair overlay for Linux games on KDE Plasma / XWayland (git)"
 arch=('any')

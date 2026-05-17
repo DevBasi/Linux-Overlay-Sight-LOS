@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "linux-overlay-sight"
-version = "1.0.1"
+version = "1.0.2"
 description = "Crosshair overlay for Linux games on KDE Plasma / XWayland"
 readme = "README_EN.md"
 license = { file = "LICENSE" }

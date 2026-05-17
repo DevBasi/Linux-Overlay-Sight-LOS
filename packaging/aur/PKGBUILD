@@ -1,7 +1,7 @@
 # Maintainer: DevBasi <https://github.com/DevBasi>
 pkgname=linux-overlay-sight
 _pkgname=Linux-Overlay-Sight-LOS
-pkgver=1.0.1
+pkgver=1.0.2
 pkgrel=1
 pkgdesc="Crosshair overlay for Linux games on KDE Plasma / XWayland"
 arch=('any')
