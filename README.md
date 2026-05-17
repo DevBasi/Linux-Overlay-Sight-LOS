@@ -4,9 +4,9 @@
 
 # Linux Overlay Sight
 
-**Кроссхейр-оверлей для Linux · KDE Plasma · XWayland**
+**Crosshair overlay for Linux · KDE Plasma · XWayland**
 
-Рисует точку прицела поверх любой игры — включая полноэкранный режим через Wine/Proton
+Draws a crosshair on top of any game — including fullscreen mode via Wine/Proton
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![PyQt6](https://img.shields.io/badge/PyQt6-6.4%2B-41CD52?style=flat-square&logo=qt&logoColor=white)](https://pypi.org/project/PyQt6)
@@ -14,36 +14,36 @@
 [![DE](https://img.shields.io/badge/KDE_Plasma-Wayland%20%2F%20X11-1D99F3?style=flat-square&logo=kde&logoColor=white)](https://kde.org)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
-[🇷🇺 **Русский**] · [🇺🇸 **English**](README_EN.md)
+[🇺🇸 **English**] · [🇷🇺 **Русский**](README_RU.md)
 
 </div>
 
 ---
 
-## Зачем
+## Why
 
-Некоторые жанры (шутеры, MMO с видом от третьего лица) не показывают прицел в определённых ситуациях. Linux Overlay Sight — программная замена: невидимое для системы окно с прицелом ровно по центру экрана.
+Some games don't show a crosshair in certain situations — shooters, third-person MMOs. A physical sticker on the monitor is ugly. LOS is a software alternative: an invisible OS-level window with a crosshair exactly at the screen center.
 
-Работает поверх **полноэкранных** игр через Wine / Proton на **XWayland** — там, где большинство других решений ломается.
+Works above **fullscreen** games via Wine / Proton on **XWayland** — where most other solutions break.
 
 ---
 
-## Возможности
+## Features
 
 | | |
 |---|---|
-| 🎯 **4 стиля прицела** | точка · крест · точка+крест · окружность |
-| 🎨 **Цвет** | любой HEX, отдельно цвет обводки |
-| 🔆 **Прозрачность** | слайдер 50–255 |
-| 📐 **Размер / толщина / зазор** | точная настройка каждого параметра |
-| 🖱️ **Системный трей** | быстрое вкл/выкл двойным кликом |
-| 💾 **Автосохранение** | настройки в `~/.config/los.json` |
-| 👻 **Клик-сквозь** | мышь проходит насквозь, игра управляется как обычно |
-| 🖥️ **Multi-monitor safe** | курсор игры не «утекает» на соседний монитор |
+| 🎯 **4 crosshair styles** | dot · cross · dot+cross · circle |
+| 🎨 **Color** | any HEX, separate outline color |
+| 🔆 **Opacity** | slider 50–255 |
+| 📐 **Size / thickness / gap** | fine-tuning for each parameter |
+| 🖱️ **System tray** | quick toggle via double click |
+| 💾 **Auto-save** | settings written to `~/.config/los.json` |
+| 👻 **Click-through** | mouse clicks pass through, game controls as normal |
+| 🖥️ **Multi-monitor safe** | game pointer no longer escapes to a second monitor |
 
 ---
 
-## Установка
+## Installation
 
 ### 🅰 Arch / CachyOS / Manjaro (AUR)
 
@@ -51,11 +51,11 @@
 # stable
 yay -S linux-overlay-sight
 
-# bleeding edge (последний commit из main)
+# bleeding edge (latest commit on main)
 yay -S linux-overlay-sight-git
 ```
 
-### 🅱 AppImage (любой дистрибутив)
+### 🅱 AppImage (any distribution)
 
 ```bash
 wget https://github.com/DevBasi/Linux-Overlay-Sight-LOS/releases/latest/download/linux-overlay-sight-1.0.2-x86_64.AppImage
@@ -63,7 +63,7 @@ chmod +x linux-overlay-sight-*.AppImage
 ./linux-overlay-sight-*.AppImage
 ```
 
-### 🅲 Из исходников (для разработки)
+### 🅲 From source (development)
 
 ```bash
 git clone https://github.com/DevBasi/Linux-Overlay-Sight-LOS.git
@@ -74,114 +74,114 @@ cd Linux-Overlay-Sight-LOS
 
 ---
 
-## Требования
+## Requirements
 
-- Linux с **KDE Plasma** (Wayland + XWayland — рекомендуется) или любым DE на X11
+- Linux with **KDE Plasma** (Wayland + XWayland recommended) or any X11 DE
 - **Python 3.9+**
 - **PyQt6 ≥ 6.4**
-- Игра запускается через **Wine / Proton** (XWayland-окно)
+- Game running through **Wine / Proton** (XWayland window)
 
-> На GNOME / Hyprland / sway работа возможна, но протестировано на KDE Plasma 6.
+> GNOME / Hyprland / sway may work, but it's tested on KDE Plasma 6.
 
 ---
 
-## Запуск
+## Usage
 
-После установки команда `linux-overlay-sight` (или короткая `los`) появится в PATH. Также появится ярлык в меню приложений.
+After install, the command `linux-overlay-sight` (or the short alias `los`) is on `PATH`, and a launcher appears in the application menu.
 
 ```bash
-linux-overlay-sight        # GUI
+linux-overlay-sight         # GUI
 linux-overlay-sight --help
 linux-overlay-sight --version
 ```
 
-В системном трее появится иконка прицела. Прицел сразу виден на экране.
+A crosshair icon appears in the system tray. The crosshair is immediately visible on screen.
 
-### Управление из трея
+### Tray controls
 
-| Действие | Результат |
+| Action | Result |
 |---|---|
-| Двойной клик ЛКМ | Вкл / Выкл прицел |
-| ПКМ → Настройки… | Открыть панель настроек |
-| ПКМ → Выход | Закрыть приложение |
+| Double-click | Toggle crosshair on / off |
+| Right click → Settings… | Open settings panel |
+| Right click → Quit | Close the application |
 
 ---
 
-## Настройки
+## Settings
 
 <img width="770" height="638" alt="settings" src="https://github.com/user-attachments/assets/9a685d31-b838-4ab5-ba52-beab08a77f7a" />
 
-- **Стиль** — точка / крест / точка+крест / окружность
-- **Размер** — радиус точки или длина линий
-- **Толщина** — толщина линий (для крестов и окружности)
-- **Зазор** — отступ от центра (для крестов)
-- **Цвет / Обводка** — кликабельный swatch → color picker
-- **Прозрачность** — от полупрозрачного до полностью непрозрачного
+- **Style** — dot / cross / dot+cross / circle
+- **Size** — dot radius or line length
+- **Thickness** — line width (for crosses and circle)
+- **Gap** — center offset (for crosses)
+- **Color / Outline** — clickable swatch → color picker
+- **Opacity** — from semi-transparent to fully opaque
 
-Все изменения применяются мгновенно и сохраняются автоматически в `~/.config/los.json`.
+All changes apply instantly and save automatically to `~/.config/los.json`.
 
 ---
 
 ## FAQ
 
 <details>
-<summary><b>Меня забанят?</b></summary>
+<summary><b>Will I get banned?</b></summary>
 
-**Технически — маловероятно.**
+**Technically — unlikely.**
 
-Античит игры работает *внутри* Wine как Windows-процесс. Он видит только Wine-окружение: DLL, память игры, Windows API. Наш оверлей — Linux-процесс с X11-окном. С точки зрения Windows-античита он **не существует**: нет инжекта DLL, нет хука рендера, нет чтения памяти.
+The game's anti-cheat runs *inside* Wine as a Windows process. It only sees the Wine environment: DLLs, game memory, Windows API. Our overlay is a Linux process with an X11 window. From the anti-cheat's perspective it **doesn't exist**: no DLL injection, no render hook, no memory reading.
 
-Тем не менее, ознакомьтесь с правилами конкретной игры.
-
-</details>
-
-<details>
-<summary><b>Курсор «вылетает» на второй монитор</b></summary>
-
-Исправлено в 1.0.0: окно оверлея теперь маленькое (400×400) по центру первичного монитора и больше не ломает pointer-grab игры. Если проблема осталась — пришлите вывод `kwin_wayland --version` в issue.
+That said, always check the specific game's ToS.
 
 </details>
 
 <details>
-<summary><b>Не работает на чистом Wayland без XWayland</b></summary>
+<summary><b>Cursor escapes to a second monitor</b></summary>
 
-Нативный Wayland без XWayland не поддерживается — нет аналогов `WindowTransparentForInput` + `X11BypassWindowManagerHint`. Убедитесь, что XWayland активен (по умолчанию в KDE Plasma).
+Fixed in 1.0.0: the overlay is now a small (400×400) centered window that no longer breaks the game's pointer grab. If you still see the issue, please file a bug with `kwin_wayland --version`.
 
 </details>
 
 <details>
-<summary><b>Где хранятся настройки?</b></summary>
+<summary><b>Doesn't work on pure Wayland without XWayland</b></summary>
+
+Native Wayland without XWayland is unsupported — there's no equivalent of `WindowTransparentForInput` + `X11BypassWindowManagerHint`. Make sure XWayland is active (default on KDE Plasma).
+
+</details>
+
+<details>
+<summary><b>Where are settings stored?</b></summary>
 
 ```
 ~/.config/los.json
 ```
 
-Можно редактировать вручную или удалить для сброса к дефолтам. Путь переопределяется через `$XDG_CONFIG_HOME` или флаг `--config PATH`.
+Edit manually or delete to reset to defaults. The path follows `$XDG_CONFIG_HOME` and can be overridden via `--config PATH`.
 
 </details>
 
 ---
 
-## Структура проекта
+## Project structure
 
 ```
 .
-├── aim_overlay.py                       # всё приложение (~450 строк, один файл)
-├── pyproject.toml                       # описание пакета (hatchling)
-├── setup.sh / run.sh                    # dev-скрипты (venv)
+├── aim_overlay.py                       # entire app (~450 lines, single file)
+├── pyproject.toml                       # package definition (hatchling)
+├── setup.sh / run.sh                    # dev scripts (venv)
 ├── assets/
-│   ├── linux-overlay-sight.svg          # векторная иконка
-│   └── linux-overlay-sight-*.png        # растровые иконки 16…512 px
+│   ├── linux-overlay-sight.svg          # vector icon
+│   └── linux-overlay-sight-*.png        # raster icons 16…512 px
 ├── packaging/
-│   ├── linux-overlay-sight.desktop      # ярлык для меню
-│   ├── aur/PKGBUILD                     # стабильный AUR
+│   ├── linux-overlay-sight.desktop      # menu launcher
+│   ├── aur/PKGBUILD                     # stable AUR
 │   ├── aur-git/PKGBUILD                 # AUR -git
-│   └── appimage/build.sh                # сборка AppImage
-└── .github/workflows/                   # CI + release
+│   └── appimage/build.sh                # AppImage build script
+└── .github/workflows/                   # CI + release automation
 ```
 
 ---
 
-## Лицензия
+## License
 
-[MIT](LICENSE) — делайте что хотите.
+[MIT](LICENSE) — do whatever you want.

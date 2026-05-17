@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# AIM Overlay — запуск
+# AIM Overlay launcher
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV="$DIR/.venv"
 
 if [[ ! -d "$VENV" ]]; then
-    echo "Сначала запустите: ./setup.sh"
+    echo "Run first: ./setup.sh"
     exit 1
 fi
 
