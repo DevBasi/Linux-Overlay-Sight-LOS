@@ -123,16 +123,6 @@ def save_config(cfg: dict) -> None:
 
 
 class CursorLocker:
-    """Keeps the cursor within the primary screen using XTestFakeMotionEvent.
-
-    XWarpPointer from an unfocused/transparent window can be silently ignored by
-    KWin on Wayland. XTest synthetic events are a different path: KWin treats them
-    as real hardware input and forwards them through the Wayland pointer pipeline,
-    so the cursor actually moves regardless of who has focus or an active grab.
-
-    Reads position via XQueryPointer (reliable on XWayland), moves via XTest,
-    checks at ~60 Hz.
-    """
 
     _INTERVAL_MS = 16
 
@@ -158,15 +148,15 @@ class CursorLocker:
             libX11.XFlush.argtypes = [ctypes.c_void_p]
             libX11.XQueryPointer.restype  = ctypes.c_int
             libX11.XQueryPointer.argtypes = [
-                ctypes.c_void_p,                  # Display*
-                ctypes.c_ulong,                   # Window
-                ctypes.POINTER(ctypes.c_ulong),   # root_return
-                ctypes.POINTER(ctypes.c_ulong),   # child_return
-                ctypes.POINTER(ctypes.c_int),     # root_x_return
-                ctypes.POINTER(ctypes.c_int),     # root_y_return
-                ctypes.POINTER(ctypes.c_int),     # win_x_return
-                ctypes.POINTER(ctypes.c_int),     # win_y_return
-                ctypes.POINTER(ctypes.c_uint),    # mask_return
+                ctypes.c_void_p,                  
+                ctypes.c_ulong,                   
+                ctypes.POINTER(ctypes.c_ulong),  
+                ctypes.POINTER(ctypes.c_ulong),   
+                ctypes.POINTER(ctypes.c_int),     
+                ctypes.POINTER(ctypes.c_int),   
+                ctypes.POINTER(ctypes.c_int),    
+                ctypes.POINTER(ctypes.c_int),     
+                ctypes.POINTER(ctypes.c_uint),    
             ]
 
             display_name = os.environ.get("DISPLAY", ":0").encode()
@@ -253,12 +243,6 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-        # Small centered window instead of a full-screen overlay: a screen-sized
-        # top-most XWayland surface interferes with fullscreen games' pointer
-        # confinement under KWin — after the game drops and re-acquires its
-        # grab (e.g. opening then closing the inventory in Stalcraft) the
-        # cursor escapes to a second monitor. Limiting the overlay to the
-        # crosshair area keeps the game's grab intact.
         geom = QApplication.primaryScreen().geometry()
         side = self._OVERLAY_SIDE
         x = geom.x() + (geom.width()  - side) // 2
