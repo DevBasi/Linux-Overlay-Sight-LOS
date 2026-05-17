@@ -58,19 +58,12 @@ yay -S linux-overlay-sight-git
 ### 🅱 AppImage (any distribution)
 
 ```bash
-wget https://github.com/DevBasi/Linux-Overlay-Sight-LOS/releases/latest/download/linux-overlay-sight-x86_64.AppImage
+wget https://github.com/DevBasi/Linux-Overlay-Sight-LOS/releases/latest/download/linux-overlay-sight-1.0.0-x86_64.AppImage
 chmod +x linux-overlay-sight-*.AppImage
 ./linux-overlay-sight-*.AppImage
 ```
 
-### 🅲 pip / pipx
-
-```bash
-pipx install linux-overlay-sight
-linux-overlay-sight
-```
-
-### 🅳 From source (development)
+### 🅲 From source (development)
 
 ```bash
 git clone https://github.com/DevBasi/Linux-Overlay-Sight-LOS.git
@@ -191,15 +184,56 @@ Edit manually or delete to reset to defaults. The path follows `$XDG_CONFIG_HOME
 
 ## Publishing guide
 
-This is a step-by-step playbook for cutting a release and pushing it to AUR, GitHub Releases and PyPI.
+A complete walkthrough for cutting a new release and pushing it to GitHub + AUR. Russian-speaking users — see the same in [README.md](README.md#guide-for-maintainers).
 
 ### 0 · One-time setup
 
-| Channel | Setup |
+The release pipeline targets two channels:
+
+| Channel | What's needed |
 |---|---|
-| **PyPI**   | On PyPI, configure a **trusted publisher** that points at this GitHub repo's `release.yml` (project: `linux-overlay-sight`, env: `pypi`). No tokens needed. |
-| **AUR**    | Create AUR account, upload your SSH pubkey, then `git clone ssh://aur@aur.archlinux.org/linux-overlay-sight.git` (and the same for `-git`). |
-| **GitHub** | The `release.yml` workflow uses `GITHUB_TOKEN` — already provisioned. |
+| **GitHub Release** | Nothing — the `release.yml` workflow uses the auto-provisioned `GITHUB_TOKEN`. |
+| **AUR**            | An AUR account + SSH key (see step 0a below). |
+
+#### 0a · AUR account and SSH key — one-time, ~5 minutes
+
+1. **Create an AUR account** at https://aur.archlinux.org/register/. The username is up to you (e.g. `devbasi`).
+
+2. **Generate an SSH key** if you don't have one yet:
+
+   ```bash
+   # Skip if ~/.ssh/id_ed25519.pub already exists
+   ssh-keygen -t ed25519 -C "aur@your-email.tld"
+   # press Enter to accept default path, optionally set a passphrase
+   ```
+
+   This creates two files:
+   - `~/.ssh/id_ed25519`      ← private key, **never share**
+   - `~/.ssh/id_ed25519.pub`  ← public key, paste this to AUR
+
+3. **Copy the public key**:
+
+   ```bash
+   cat ~/.ssh/id_ed25519.pub
+   ```
+
+4. **Add it to your AUR profile**: https://aur.archlinux.org/account/ (after login) → field **SSH Public Key** → paste → **Update**.
+
+5. **Test the connection**:
+
+   ```bash
+   ssh aur@aur.archlinux.org help
+   ```
+   You should see a help message, not "Permission denied".
+
+6. **Clone the (empty) AUR repos**. AUR creates the repo lazily on first push, but you can clone right away — git will just say "empty repository".
+
+   ```bash
+   mkdir -p ~/aur
+   cd ~/aur
+   git clone ssh://aur@aur.archlinux.org/linux-overlay-sight.git
+   git clone ssh://aur@aur.archlinux.org/linux-overlay-sight-git.git
+   ```
 
 ### 1 · Bump the version
 
@@ -207,11 +241,12 @@ Edit both:
 
 * `pyproject.toml` — `version = "X.Y.Z"`
 * `aim_overlay.py` — `__version__ = "X.Y.Z"`
+* `packaging/aur/PKGBUILD` — `pkgver=X.Y.Z`
 
 Commit:
 
 ```bash
-git add pyproject.toml aim_overlay.py
+git add pyproject.toml aim_overlay.py packaging/aur/PKGBUILD
 git commit -m "Release vX.Y.Z"
 ```
 
@@ -224,41 +259,59 @@ git push origin main vX.Y.Z
 
 The push triggers `.github/workflows/release.yml`, which:
 
-1. Builds the **wheel + sdist** (`python -m build`).
-2. Builds the **AppImage** (`packaging/appimage/build.sh`).
-3. Creates a **GitHub Release** with all artifacts and auto-generated notes.
-4. Publishes the wheel and sdist to **PyPI** via the trusted publisher.
+1. Builds the **AppImage** via `packaging/appimage/build.sh`.
+2. Creates a **GitHub Release** with the AppImage attached and auto-generated notes.
 
-### 3 · Update AUR
+Watch progress at https://github.com/DevBasi/Linux-Overlay-Sight-LOS/actions.
 
-After the GitHub release exists, the tarball URL is stable. Update the AUR packages:
+### 3 · Push the stable PKGBUILD to AUR
+
+Wait until the GitHub Release exists (the tarball URL must resolve), then:
 
 ```bash
-# 1. Update PKGBUILD in this repo (sync version)
-sed -i 's/^pkgver=.*/pkgver=X.Y.Z/' packaging/aur/PKGBUILD
-
-# 2. Compute the new tarball sha256 and patch sha256sums=()
+# Compute the source tarball checksum
 url="https://github.com/DevBasi/Linux-Overlay-Sight-LOS/archive/refs/tags/vX.Y.Z.tar.gz"
 sha=$(curl -sL "$url" | sha256sum | cut -d' ' -f1)
-sed -i "s/^sha256sums=.*/sha256sums=('$sha')/" packaging/aur/PKGBUILD
 
-# 3. Push to the AUR repo (separate git remote)
-cp packaging/aur/PKGBUILD     ~/aur/linux-overlay-sight/PKGBUILD
+# Patch the PKGBUILD checkout in your AUR clone
+cp packaging/aur/PKGBUILD ~/aur/linux-overlay-sight/PKGBUILD
+sed -i "s/^sha256sums=.*/sha256sums=('$sha')/" ~/aur/linux-overlay-sight/PKGBUILD
+
 cd ~/aur/linux-overlay-sight
+
+# Test the build locally — this catches dependency mistakes before users see them
+makepkg -si
+
+# Regenerate metadata
 makepkg --printsrcinfo > .SRCINFO
-makepkg -si      # local test build
+
+# Commit and push
 git add PKGBUILD .SRCINFO
 git commit -m "Update to X.Y.Z"
 git push
 ```
 
-`linux-overlay-sight-git` doesn't need version bumps — its `pkgver()` runs from `HEAD` on each rebuild. Push it once, that's it.
+### 4 · `-git` package — one push, ever
 
-### 4 · Verify
+`linux-overlay-sight-git` doesn't need version bumps — its `pkgver()` reads the current `HEAD` of `main` on every rebuild. Push it once at the start:
 
-* AppImage runs on a clean Ubuntu/Fedora VM.
-* `pipx install linux-overlay-sight` from PyPI installs the new version.
-* `yay -S linux-overlay-sight` upgrades cleanly.
+```bash
+cp packaging/aur-git/PKGBUILD ~/aur/linux-overlay-sight-git/PKGBUILD
+cd ~/aur/linux-overlay-sight-git
+makepkg --printsrcinfo > .SRCINFO
+makepkg -si
+git add PKGBUILD .SRCINFO
+git commit -m "Initial import"
+git push
+```
+
+After that, users get the latest commit automatically on `yay -S linux-overlay-sight-git`.
+
+### 5 · Verify
+
+* `wget` the AppImage URL → `chmod +x` → run on a clean VM.
+* `yay -S linux-overlay-sight` installs the new stable version cleanly.
+* `yay -S linux-overlay-sight-git` builds against latest `main`.
 
 ---
 

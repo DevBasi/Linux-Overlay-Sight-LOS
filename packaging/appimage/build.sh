@@ -46,7 +46,7 @@ cp "$PROJECT_ROOT/assets/linux-overlay-sight-256.png" \
 # appimagetool turns Name= into the output filename and replaces spaces
 # with underscores. python-appimage then looks for the original (spaced)
 # name and crashes. Patch Name= to a no-space slug for the recipe copy
-# only — the installed AUR/pipx .desktop keeps its pretty "Linux Overlay
+# only — the .desktop installed by AUR keeps its pretty "Linux Overlay
 # Sight" name.
 sed -i "s/^Name=.*/Name=$APP_NAME/" "$RECIPE/$APP_NAME.desktop"
 
