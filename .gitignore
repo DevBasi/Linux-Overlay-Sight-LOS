@@ -21,7 +21,18 @@ packaging/aur*/src/
 packaging/aur*/*.tar.zst
 packaging/aur*/*.tar.gz
 
-# IDE
+# IDE / agents
 .vscode/
 .idea/
+.claude/
 *.swp
+*.local.json
+
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+CLAUDE.md

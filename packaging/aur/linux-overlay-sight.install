@@ -1,0 +1,22 @@
+_refresh_system() {
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+    update-desktop-database -q /usr/share/applications      2>/dev/null || true
+}
+
+_hint_user() {
+    cat <<'EOF'
+
+==> Linux Overlay Sight: to refresh the KDE menu cache, run as your user:
+==>
+==>     kbuildsycoca6 --noincremental
+==>     rm -f ~/.cache/icon-cache.kcache
+==>     killall plasmashell; kstart plasmashell &
+==>
+==> If the icon stays generic, log out and back in.
+
+EOF
+}
+
+post_install() { _refresh_system; _hint_user; }
+post_upgrade() { _refresh_system; _hint_user; }
+post_remove()  { _refresh_system; }

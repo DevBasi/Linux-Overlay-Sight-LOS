@@ -1,29 +1,30 @@
+"""Linux Overlay Sight — crosshair overlay for KDE Plasma / XWayland."""
 
-"""
-LOS — Linux Overlay Sight · crosshair overlay for KDE Plasma / XWayland
-Stays above fullscreen XWayland apps (Wine, Stalcraft X, etc.)
-"""
+from __future__ import annotations
 
-import sys
-import json
-import os
-import locale
 import argparse
+import json
+import locale
+import os
+import re
+import sys
 from pathlib import Path
 
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QSystemTrayIcon, QMenu, QMessageBox,
-    QColorDialog, QDialog, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QLabel, QPushButton, QSpinBox,
-    QComboBox, QSlider, QCheckBox, QGroupBox, QDialogButtonBox,
-)
 from PyQt6.QtCore import Qt, QPoint, QTimer
 from PyQt6.QtGui import (
-    QPainter, QColor, QPen, QBrush, QAction, QIcon, QPixmap,
+    QAction, QBrush, QColor, QIcon, QPainter, QPen, QPixmap,
+)
+from PyQt6.QtWidgets import (
+    QApplication, QCheckBox, QColorDialog, QComboBox, QDialog,
+    QDialogButtonBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel,
+    QMenu, QMessageBox, QPushButton, QSlider, QSpinBox,
+    QSystemTrayIcon, QVBoxLayout, QWidget,
 )
 
 
-__version__ = "1.0.0"
+# ─── Constants ──────────────────────────────────────────────────────
+
+__version__ = "1.0.1"
 APP_ID      = "linux-overlay-sight"
 
 CONFIG_PATH = Path(
@@ -42,8 +43,18 @@ DEFAULTS: dict = {
     "enabled":       True,
 }
 
-STYLE_LABELS = ["dot", "cross", "dot+cross", "circle"]
+STYLE_LABELS = ("dot", "cross", "dot+cross", "circle")
 
+_HEX_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_RANGES = {
+    "size":      (1, 30),
+    "thickness": (1, 10),
+    "gap":       (0, 20),
+    "opacity":   (50, 255),
+}
+
+
+# ─── i18n ───────────────────────────────────────────────────────────
 
 def _detect_lang() -> str:
     for var in ("LANG", "LANGUAGE", "LC_ALL", "LC_MESSAGES"):
@@ -56,6 +67,7 @@ def _detect_lang() -> str:
     except Exception:
         pass
     return "en"
+
 
 LANG = _detect_lang()
 
@@ -106,48 +118,139 @@ _S: dict = {
     },
 }
 
+
 def T(key: str) -> str:
     return _S[LANG].get(key, key)
 
 
+# ─── Config ─────────────────────────────────────────────────────────
+
+def _sanitize(cfg: dict) -> dict:
+    out: dict = {}
+    for k, default in DEFAULTS.items():
+        v = cfg.get(k, default)
+        if k in ("color", "outline_color"):
+            v = v if isinstance(v, str) and _HEX_RE.match(v) else default
+        elif k == "style":
+            v = v if v in STYLE_LABELS else default
+        elif k in ("outline", "enabled"):
+            v = bool(v) if isinstance(v, bool) else default
+        elif k in _RANGES:
+            lo, hi = _RANGES[k]
+            v = v if isinstance(v, int) and lo <= v <= hi else default
+        out[k] = v
+    return out
+
+
 def load_config() -> dict:
     try:
-        cfg = {**DEFAULTS, **json.loads(CONFIG_PATH.read_text())}
+        raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise ValueError("config root must be an object")
     except Exception:
         return dict(DEFAULTS)
-    return {k: cfg[k] for k in DEFAULTS}
+    return _sanitize(raw)
 
 
 def save_config(cfg: dict) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    keep = {k: cfg.get(k, DEFAULTS[k]) for k in DEFAULTS}
-    CONFIG_PATH.write_text(json.dumps(keep, indent=2))
+    CONFIG_PATH.write_text(
+        json.dumps(_sanitize(cfg), indent=2),
+        encoding="utf-8",
+    )
 
+
+# ─── Icons ──────────────────────────────────────────────────────────
 
 def _app_icon() -> QIcon:
-    """Look for an installed app icon, then fall back to the in-tree asset,
-    then to a programmatically drawn one."""
     icon = QIcon.fromTheme(APP_ID)
     if not icon.isNull():
         return icon
 
-    candidates = [
-        Path(__file__).resolve().parent / "assets" / "linux-overlay-sight.svg",
-        Path(__file__).resolve().parent / "assets" / "linux-overlay-sight.png",
+    here = Path(__file__).resolve().parent
+    candidates = (
+        here / "assets" / "linux-overlay-sight.svg",
+        here / "assets" / "linux-overlay-sight.png",
         Path("/usr/share/icons/hicolor/scalable/apps/linux-overlay-sight.svg"),
         Path("/usr/share/icons/hicolor/256x256/apps/linux-overlay-sight.png"),
         Path("/usr/share/pixmaps/linux-overlay-sight.png"),
-    ]
+    )
     for p in candidates:
         if p.is_file():
             return QIcon(str(p))
 
-    return _make_tray_icon("#00FF41")
+    return _make_tray_icon(DEFAULTS["color"])
 
 
+def _make_tray_icon(hex_color: str) -> QIcon:
+    if not _HEX_RE.match(hex_color or ""):
+        hex_color = DEFAULTS["color"]
+
+    px = QPixmap(22, 22)
+    px.fill(Qt.GlobalColor.transparent)
+
+    p = QPainter(px)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    c = QColor(hex_color)
+    p.setPen(QPen(c, 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+
+    cx, cy = 11, 11
+    p.drawLine(cx - 7, cy, cx - 2, cy)
+    p.drawLine(cx + 2, cy, cx + 7, cy)
+    p.drawLine(cx, cy - 7, cx, cy - 2)
+    p.drawLine(cx, cy + 2, cx, cy + 7)
+
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QBrush(c))
+    p.drawEllipse(QPoint(cx, cy), 2, 2)
+    p.end()
+
+    return QIcon(px)
+
+
+# ─── Drawing primitives ─────────────────────────────────────────────
+
+def _draw_dot(p: QPainter, cx: int, cy: int, r: int,
+              color: QColor, outline: QColor | None) -> None:
+    p.setPen(Qt.PenStyle.NoPen)
+    if outline is not None:
+        p.setBrush(QBrush(outline))
+        p.drawEllipse(QPoint(cx, cy), r + 1, r + 1)
+    p.setBrush(QBrush(color))
+    p.drawEllipse(QPoint(cx, cy), r, r)
+
+
+def _draw_cross(p: QPainter, cx: int, cy: int, size: int, gap: int,
+                pen_color: QPen, pen_outline: QPen | None) -> None:
+    arms = size * 5
+
+    def _lines() -> None:
+        p.drawLine(cx - arms, cy, cx - gap,  cy)
+        p.drawLine(cx + gap,  cy, cx + arms, cy)
+        p.drawLine(cx, cy - arms, cx, cy - gap)
+        p.drawLine(cx, cy + gap,  cx, cy + arms)
+
+    if pen_outline is not None:
+        p.setPen(pen_outline)
+        _lines()
+    p.setPen(pen_color)
+    _lines()
+
+
+def _draw_circle(p: QPainter, cx: int, cy: int, size: int,
+                 pen_color: QPen, pen_outline: QPen | None) -> None:
+    r = size * 6
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    if pen_outline is not None:
+        p.setPen(pen_outline)
+        p.drawEllipse(QPoint(cx, cy), r, r)
+    p.setPen(pen_color)
+    p.drawEllipse(QPoint(cx, cy), r, r)
+
+
+# ─── Overlay window ─────────────────────────────────────────────────
 
 class CrosshairOverlay(QWidget):
-    # 400 px covers the largest configurable crosshair (size 30 → circle r=180).
     _SIDE = 400
 
     def __init__(self, cfg: dict) -> None:
@@ -170,10 +273,6 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
-        # Small window centered on the primary screen. A screen-spanning
-        # XWayland overlay breaks fullscreen games' pointer confinement under
-        # KWin — after the game toggles its grab off/on (e.g. inventory in
-        # Stalcraft) the cursor escapes to a second monitor.
         geom = QApplication.primaryScreen().geometry()
         s = self._SIDE
         self.setGeometry(
@@ -182,8 +281,6 @@ class CrosshairOverlay(QWidget):
             s, s,
         )
 
-        # Override-redirect windows stay on top reliably — raise once per
-        # second to recover from rare edge cases without spamming X.
         self._raise_timer = QTimer(self)
         self._raise_timer.timeout.connect(self.raise_)
         self._raise_timer.start(1000)
@@ -221,14 +318,12 @@ class CrosshairOverlay(QWidget):
 
         cx = self.width()  // 2
         cy = self.height() // 2
-
         style   = self.cfg["style"]
         size    = self.cfg["size"]
         gap     = self.cfg["gap"]
         outline = self.cfg["outline"]
-
-        ol_col = self._outline_col if outline else None
-        ol_pen = self._pen_outline if outline else None
+        ol_col  = self._outline_col if outline else None
+        ol_pen  = self._pen_outline if outline else None
 
         if style in ("dot", "dot+cross"):
             _draw_dot(p, cx, cy, size, self._color, ol_col)
@@ -240,43 +335,24 @@ class CrosshairOverlay(QWidget):
         p.end()
 
 
-def _draw_dot(p: QPainter, cx, cy, r, color, outline) -> None:
-    p.setPen(Qt.PenStyle.NoPen)
-    if outline is not None:
-        p.setBrush(QBrush(outline))
-        p.drawEllipse(QPoint(cx, cy), r + 1, r + 1)
-    p.setBrush(QBrush(color))
-    p.drawEllipse(QPoint(cx, cy), r, r)
+# ─── Settings dialog ────────────────────────────────────────────────
+
+def _make_swatch(hex_color: str) -> QPushButton:
+    btn = QPushButton()
+    btn.setFixedSize(64, 24)
+    _apply_swatch(btn, hex_color)
+    return btn
 
 
-def _draw_cross(p: QPainter, cx, cy, size, gap, pen_color, pen_outline) -> None:
-    arms = size * 5
-    if pen_outline is not None:
-        p.setPen(pen_outline)
-        p.drawLine(cx - arms, cy, cx - gap,  cy)
-        p.drawLine(cx + gap,  cy, cx + arms, cy)
-        p.drawLine(cx, cy - arms, cx, cy - gap)
-        p.drawLine(cx, cy + gap,  cx, cy + arms)
-    p.setPen(pen_color)
-    p.drawLine(cx - arms, cy, cx - gap,  cy)
-    p.drawLine(cx + gap,  cy, cx + arms, cy)
-    p.drawLine(cx, cy - arms, cx, cy - gap)
-    p.drawLine(cx, cy + gap,  cx, cy + arms)
-
-
-def _draw_circle(p: QPainter, cx, cy, size, pen_color, pen_outline) -> None:
-    r = size * 6
-    p.setBrush(Qt.BrushStyle.NoBrush)
-    if pen_outline is not None:
-        p.setPen(pen_outline)
-        p.drawEllipse(QPoint(cx, cy), r, r)
-    p.setPen(pen_color)
-    p.drawEllipse(QPoint(cx, cy), r, r)
-
+def _apply_swatch(btn: QPushButton, hex_color: str) -> None:
+    safe = hex_color if _HEX_RE.match(hex_color or "") else DEFAULTS["color"]
+    btn.setStyleSheet(
+        f"background-color: {safe}; border: 1px solid #666; border-radius: 3px;"
+    )
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, cfg: dict, parent=None) -> None:
+    def __init__(self, cfg: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.cfg = dict(cfg)
         self.setWindowTitle(T("win_title"))
@@ -285,68 +361,78 @@ class SettingsDialog(QDialog):
 
     def _build(self) -> None:
         root = QVBoxLayout(self)
+        root.addWidget(self._cross_box())
+        root.addWidget(self._color_box())
+        root.addWidget(self._opacity_box())
 
-        ch_box = QGroupBox(T("grp_cross"))
-        form = QFormLayout(ch_box)
+        btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        root.addWidget(btns)
+
+    def _cross_box(self) -> QGroupBox:
+        box  = QGroupBox(T("grp_cross"))
+        form = QFormLayout(box)
 
         self.style_cb = QComboBox()
         self.style_cb.addItems(STYLE_LABELS)
         self.style_cb.setCurrentText(self.cfg["style"])
         form.addRow(T("lbl_style"), self.style_cb)
 
-        self.size_sp = QSpinBox(); self.size_sp.setRange(1, 30)
+        self.size_sp = QSpinBox(); self.size_sp.setRange(*_RANGES["size"])
         self.size_sp.setValue(self.cfg["size"])
         form.addRow(T("lbl_size"), self.size_sp)
 
-        self.thick_sp = QSpinBox(); self.thick_sp.setRange(1, 10)
+        self.thick_sp = QSpinBox(); self.thick_sp.setRange(*_RANGES["thickness"])
         self.thick_sp.setValue(self.cfg["thickness"])
         form.addRow(T("lbl_thick"), self.thick_sp)
 
-        self.gap_sp = QSpinBox(); self.gap_sp.setRange(0, 20)
+        self.gap_sp = QSpinBox(); self.gap_sp.setRange(*_RANGES["gap"])
         self.gap_sp.setValue(self.cfg["gap"])
         form.addRow(T("lbl_gap"), self.gap_sp)
 
-        root.addWidget(ch_box)
+        return box
 
-        col_box = QGroupBox(T("grp_color"))
-        col_form = QFormLayout(col_box)
+    def _color_box(self) -> QGroupBox:
+        box  = QGroupBox(T("grp_color"))
+        form = QFormLayout(box)
 
         self.color_btn = _make_swatch(self.cfg["color"])
-        self.color_btn.clicked.connect(
-            lambda: self._pick("color", self.color_btn))
-        col_form.addRow(T("lbl_color"), self.color_btn)
+        self.color_btn.clicked.connect(lambda: self._pick("color", self.color_btn))
+        form.addRow(T("lbl_color"), self.color_btn)
 
         self.outline_chk = QCheckBox(T("lbl_outline"))
         self.outline_chk.setChecked(self.cfg["outline"])
-        col_form.addRow("", self.outline_chk)
+        form.addRow("", self.outline_chk)
 
         self.outline_btn = _make_swatch(self.cfg["outline_color"])
         self.outline_btn.clicked.connect(
-            lambda: self._pick("outline_color", self.outline_btn))
-        col_form.addRow(T("lbl_ol_col"), self.outline_btn)
+            lambda: self._pick("outline_color", self.outline_btn)
+        )
+        form.addRow(T("lbl_ol_col"), self.outline_btn)
 
-        root.addWidget(col_box)
+        return box
 
-        op_box = QGroupBox(T("grp_opacity"))
-        op_row = QHBoxLayout(op_box)
+    def _opacity_box(self) -> QGroupBox:
+        box = QGroupBox(T("grp_opacity"))
+        row = QHBoxLayout(box)
+
         self.opacity_sl = QSlider(Qt.Orientation.Horizontal)
-        self.opacity_sl.setRange(50, 255)
+        self.opacity_sl.setRange(*_RANGES["opacity"])
         self.opacity_sl.setValue(self.cfg["opacity"])
+
         self.opacity_lbl = QLabel(str(self.cfg["opacity"]))
         self.opacity_lbl.setFixedWidth(30)
         self.opacity_sl.valueChanged.connect(
-            lambda v: self.opacity_lbl.setText(str(v)))
-        op_row.addWidget(self.opacity_sl)
-        op_row.addWidget(self.opacity_lbl)
-        root.addWidget(op_box)
-
-        btns = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok |
-            QDialogButtonBox.StandardButton.Cancel
+            lambda v: self.opacity_lbl.setText(str(v))
         )
-        btns.accepted.connect(self.accept)
-        btns.rejected.connect(self.reject)
-        root.addWidget(btns)
+
+        row.addWidget(self.opacity_sl)
+        row.addWidget(self.opacity_lbl)
+        return box
 
     def _pick(self, key: str, btn: QPushButton) -> None:
         c = QColorDialog.getColor(
@@ -358,7 +444,7 @@ class SettingsDialog(QDialog):
             _apply_swatch(btn, self.cfg[key])
 
     def result_config(self) -> dict:
-        return {
+        return _sanitize({
             **self.cfg,
             "style":     self.style_cb.currentText(),
             "size":      self.size_sp.value(),
@@ -366,42 +452,10 @@ class SettingsDialog(QDialog):
             "gap":       self.gap_sp.value(),
             "opacity":   self.opacity_sl.value(),
             "outline":   self.outline_chk.isChecked(),
-        }
+        })
 
 
-def _make_swatch(hex_color: str) -> QPushButton:
-    btn = QPushButton()
-    btn.setFixedSize(64, 24)
-    _apply_swatch(btn, hex_color)
-    return btn
-
-
-def _apply_swatch(btn: QPushButton, hex_color: str) -> None:
-    btn.setStyleSheet(
-        f"background-color: {hex_color}; border: 1px solid #666; border-radius: 3px;"
-    )
-
-
-
-def _make_tray_icon(hex_color: str) -> QIcon:
-    px = QPixmap(22, 22)
-    px.fill(Qt.GlobalColor.transparent)
-    p = QPainter(px)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    c = QColor(hex_color)
-    pen = QPen(c, 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-    p.setPen(pen)
-    cx, cy = 11, 11
-    p.drawLine(cx - 7, cy,   cx - 2, cy)
-    p.drawLine(cx + 2, cy,   cx + 7, cy)
-    p.drawLine(cx, cy - 7,   cx, cy - 2)
-    p.drawLine(cx, cy + 2,   cx, cy + 7)
-    p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QBrush(c))
-    p.drawEllipse(QPoint(cx, cy), 2, 2)
-    p.end()
-    return QIcon(px)
-
+# ─── Tray ───────────────────────────────────────────────────────────
 
 class TrayController:
     def __init__(self, overlay: CrosshairOverlay, cfg: dict) -> None:
@@ -413,7 +467,10 @@ class TrayController:
         self.tray.show()
 
     def _refresh_icon(self) -> None:
-        self.tray.setIcon(_make_tray_icon(self.cfg["color"]))
+        icon = _app_icon()
+        if icon.isNull():
+            icon = _make_tray_icon(self.cfg["color"])
+        self.tray.setIcon(icon)
         status = T("status_on") if self.cfg["enabled"] else T("status_off")
         self.tray.setToolTip(f"LOS [{status}]")
 
@@ -421,7 +478,8 @@ class TrayController:
         menu = QMenu()
 
         self._toggle_act = QAction(
-            T("disable") if self.cfg["enabled"] else T("enable"), menu)
+            T("disable") if self.cfg["enabled"] else T("enable"), menu
+        )
         self._toggle_act.triggered.connect(self._toggle)
         menu.addAction(self._toggle_act)
 
@@ -460,13 +518,17 @@ class TrayController:
             save_config(self.cfg)
 
 
+# ─── Entry point ────────────────────────────────────────────────────
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="linux-overlay-sight",
         description="Crosshair overlay for Linux games (KDE Plasma / XWayland).",
     )
-    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    p.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s {__version__}",
+    )
     p.add_argument(
         "--config", metavar="PATH", type=Path, default=None,
         help=f"override config path (default: {CONFIG_PATH})",
@@ -478,11 +540,8 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     if args.config is not None:
         global CONFIG_PATH
-        CONFIG_PATH = args.config
+        CONFIG_PATH = args.config.expanduser().resolve()
 
-    # XWayland windows are the only way to stay above fullscreen Wine/Proton
-    # games on KWin Wayland. WindowTransparentForInput + X11BypassWindowManagerHint
-    # do not work on the native Wayland Qt platform.
     if "WAYLAND_DISPLAY" in os.environ and "QT_QPA_PLATFORM" not in os.environ:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
@@ -499,10 +558,8 @@ def main(argv: list[str] | None = None) -> None:
     overlay.show()
 
     if QSystemTrayIcon.isSystemTrayAvailable():
-        _tray = TrayController(overlay, cfg)  # noqa: F841  — keep alive
+        _tray = TrayController(overlay, cfg)  # noqa: F841
     else:
-        # Headless trays do happen on some minimal setups. Warn once and
-        # carry on — the crosshair itself still works.
         QMessageBox.warning(None, T("tray_missing_title"), T("tray_missing_body"))
 
     sys.exit(app.exec())

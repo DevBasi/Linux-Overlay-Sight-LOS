@@ -25,6 +25,7 @@ optdepends=(
 )
 provides=("$_pkgname=$pkgver")
 conflicts=("$_pkgname")
+install="$_pkgname.install"
 source=("$_pkgname::git+$url.git")
 sha256sums=('SKIP')
 
@@ -54,10 +55,13 @@ package() {
     install -Dm644 assets/linux-overlay-sight.svg \
         "$pkgdir/usr/share/icons/hicolor/scalable/apps/linux-overlay-sight.svg"
 
-    for s in 16 24 32 48 64 128 256 512; do
+    for s in 16 22 24 32 48 64 128 256 512; do
         install -Dm644 "assets/linux-overlay-sight-${s}.png" \
             "$pkgdir/usr/share/icons/hicolor/${s}x${s}/apps/linux-overlay-sight.png"
     done
+
+    install -Dm644 assets/linux-overlay-sight-256.png \
+        "$pkgdir/usr/share/pixmaps/linux-overlay-sight.png"
 
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$_pkgname/LICENSE"
 }
