@@ -8,8 +8,6 @@ import sys
 import json
 import os
 import locale
-import ctypes
-import ctypes.util
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
@@ -29,14 +27,13 @@ CONFIG_PATH = Path.home() / ".config" / "los.json"
 DEFAULTS: dict = {
     "color":         "#00FF41",
     "outline_color": "#000000",
-    "style":         "dot",     
+    "style":         "dot",
     "size":          5,
     "thickness":     2,
     "gap":           4,
     "opacity":       230,
     "outline":       True,
     "enabled":       True,
-    "cursor_lock":   False,
 }
 
 STYLE_LABELS = ["dot", "cross", "dot+cross", "circle"]
@@ -58,50 +55,44 @@ LANG = _detect_lang()
 
 _S: dict = {
     "ru": {
-        "win_title":        "LOS — Настройки",
-        "grp_cross":        "Прицел",
-        "grp_color":        "Цвет",
-        "grp_opacity":      "Прозрачность",
-        "lbl_style":        "Стиль:",
-        "lbl_size":         "Размер:",
-        "lbl_thick":        "Толщина:",
-        "lbl_gap":          "Зазор:",
-        "lbl_color":        "Цвет:",
-        "lbl_outline":      "Обводка",
-        "lbl_ol_col":       "Цвет обводки:",
-        "pick_color":       "Выбор цвета",
-        "disable":          "Выключить",
-        "enable":           "Включить",
-        "settings":         "Настройки…",
-        "quit":             "Выход",
-        "status_on":        "вкл",
-        "status_off":       "выкл",
-        "cursor_lock_on":   "Блокировать курсор на экране",
-        "cursor_lock_off":  "Разблокировать курсор",
-        "cursor_lock_na":   "Блокировка курсора (недоступно)",
+        "win_title":   "LOS — Настройки",
+        "grp_cross":   "Прицел",
+        "grp_color":   "Цвет",
+        "grp_opacity": "Прозрачность",
+        "lbl_style":   "Стиль:",
+        "lbl_size":    "Размер:",
+        "lbl_thick":   "Толщина:",
+        "lbl_gap":     "Зазор:",
+        "lbl_color":   "Цвет:",
+        "lbl_outline": "Обводка",
+        "lbl_ol_col":  "Цвет обводки:",
+        "pick_color":  "Выбор цвета",
+        "disable":     "Выключить",
+        "enable":      "Включить",
+        "settings":    "Настройки…",
+        "quit":        "Выход",
+        "status_on":   "вкл",
+        "status_off":  "выкл",
     },
     "en": {
-        "win_title":        "LOS — Settings",
-        "grp_cross":        "Crosshair",
-        "grp_color":        "Color",
-        "grp_opacity":      "Opacity",
-        "lbl_style":        "Style:",
-        "lbl_size":         "Size:",
-        "lbl_thick":        "Thickness:",
-        "lbl_gap":          "Gap:",
-        "lbl_color":        "Color:",
-        "lbl_outline":      "Outline",
-        "lbl_ol_col":       "Outline color:",
-        "pick_color":       "Pick color",
-        "disable":          "Disable",
-        "enable":           "Enable",
-        "settings":         "Settings…",
-        "quit":             "Quit",
-        "status_on":        "on",
-        "status_off":       "off",
-        "cursor_lock_on":   "Lock cursor to screen",
-        "cursor_lock_off":  "Unlock cursor",
-        "cursor_lock_na":   "Lock cursor (unavailable)",
+        "win_title":   "LOS — Settings",
+        "grp_cross":   "Crosshair",
+        "grp_color":   "Color",
+        "grp_opacity": "Opacity",
+        "lbl_style":   "Style:",
+        "lbl_size":    "Size:",
+        "lbl_thick":   "Thickness:",
+        "lbl_gap":     "Gap:",
+        "lbl_color":   "Color:",
+        "lbl_outline": "Outline",
+        "lbl_ol_col":  "Outline color:",
+        "pick_color":  "Pick color",
+        "disable":     "Disable",
+        "enable":      "Enable",
+        "settings":    "Settings…",
+        "quit":        "Quit",
+        "status_on":   "on",
+        "status_off":  "off",
     },
 }
 
@@ -111,127 +102,34 @@ def T(key: str) -> str:
 
 def load_config() -> dict:
     try:
-        return {**DEFAULTS, **json.loads(CONFIG_PATH.read_text())}
+        cfg = {**DEFAULTS, **json.loads(CONFIG_PATH.read_text())}
     except Exception:
         return dict(DEFAULTS)
+    # Keep only known keys — drops obsolete entries from previous versions.
+    return {k: cfg[k] for k in DEFAULTS}
 
 
 def save_config(cfg: dict) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
-
-
-
-class CursorLocker:
-
-    _INTERVAL_MS = 16
-
-    def __init__(self) -> None:
-        self._timer = QTimer()
-        self._timer.timeout.connect(self._clamp)
-        self._bounds: tuple[int, int, int, int] | None = None
-        self._display = None
-        self._root: int = 0
-        self._libX11 = None
-        self._libXtst = None
-        self.available = False
-        self._init()
-
-    def _init(self) -> None:
-        try:
-            libX11 = ctypes.CDLL(ctypes.util.find_library("X11") or "libX11.so.6")
-            libX11.XOpenDisplay.restype  = ctypes.c_void_p
-            libX11.XOpenDisplay.argtypes = [ctypes.c_char_p]
-            libX11.XDefaultRootWindow.restype  = ctypes.c_ulong
-            libX11.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
-            libX11.XFlush.restype  = ctypes.c_int
-            libX11.XFlush.argtypes = [ctypes.c_void_p]
-            libX11.XQueryPointer.restype  = ctypes.c_int
-            libX11.XQueryPointer.argtypes = [
-                ctypes.c_void_p,                  
-                ctypes.c_ulong,                   
-                ctypes.POINTER(ctypes.c_ulong),  
-                ctypes.POINTER(ctypes.c_ulong),   
-                ctypes.POINTER(ctypes.c_int),     
-                ctypes.POINTER(ctypes.c_int),   
-                ctypes.POINTER(ctypes.c_int),    
-                ctypes.POINTER(ctypes.c_int),     
-                ctypes.POINTER(ctypes.c_uint),    
-            ]
-
-            display_name = os.environ.get("DISPLAY", ":0").encode()
-            display = libX11.XOpenDisplay(display_name)
-            if not display:
-                return
-            self._display = display
-            self._root    = libX11.XDefaultRootWindow(display)
-            self._libX11  = libX11
-
-            libXtst = ctypes.CDLL(ctypes.util.find_library("Xtst") or "libXtst.so.6")
-            libXtst.XTestFakeMotionEvent.restype  = ctypes.c_int
-            libXtst.XTestFakeMotionEvent.argtypes = [
-                ctypes.c_void_p,  
-                ctypes.c_int,    
-                ctypes.c_int,     
-                ctypes.c_int,     
-                ctypes.c_ulong,   
-            ]
-            self._libXtst = libXtst
-            self.available = True
-        except Exception:
-            pass
-
-    def _cursor_pos(self) -> tuple[int, int] | None:
-        if not self._libX11 or not self._display:
-            return None
-        root_ret = ctypes.c_ulong()
-        child_ret = ctypes.c_ulong()
-        root_x = ctypes.c_int()
-        root_y = ctypes.c_int()
-        win_x  = ctypes.c_int()
-        win_y  = ctypes.c_int()
-        mask   = ctypes.c_uint()
-        self._libX11.XQueryPointer(
-            self._display, self._root,
-            ctypes.byref(root_ret), ctypes.byref(child_ret),
-            ctypes.byref(root_x),   ctypes.byref(root_y),
-            ctypes.byref(win_x),    ctypes.byref(win_y),
-            ctypes.byref(mask),
-        )
-        return root_x.value, root_y.value
-
-    def lock(self, x: int, y: int, w: int, h: int) -> bool:
-        self._bounds = (x, y, x + w - 1, y + h - 1)
-        self._timer.start(self._INTERVAL_MS)
-        return True
-
-    def unlock(self) -> None:
-        self._timer.stop()
-        self._bounds = None
-
-    def _clamp(self) -> None:
-        if self._bounds is None:
-            return
-        xmin, ymin, xmax, ymax = self._bounds
-        pos = self._cursor_pos()
-        if pos is None:
-            return
-        px, py = pos
-        nx = max(xmin, min(xmax, px))
-        ny = max(ymin, min(ymax, py))
-        if nx != px or ny != py:
-            self._libXtst.XTestFakeMotionEvent(self._display, 0, nx, ny, 0)
-            self._libX11.XFlush(self._display)
+    keep = {k: cfg.get(k, DEFAULTS[k]) for k in DEFAULTS}
+    CONFIG_PATH.write_text(json.dumps(keep, indent=2))
 
 
 
 class CrosshairOverlay(QWidget):
+    # 400 px covers the largest configurable crosshair (size 30 → circle r=180).
+    _SIDE = 400
+
     def __init__(self, cfg: dict) -> None:
         super().__init__()
         self.cfg = cfg
+        # Cached paint primitives — rebuilt only when config changes.
+        self._color       = QColor()
+        self._outline_col = QColor()
+        self._pen_color   = QPen()
+        self._pen_outline = QPen()
         self._build_window()
-
-    _OVERLAY_SIDE = 400
+        self._rebuild_cache()
 
     def _build_window(self) -> None:
         self.setWindowFlags(
@@ -243,20 +141,47 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
+        # Small window centered on the primary screen. A screen-spanning
+        # XWayland overlay breaks fullscreen games' pointer confinement under
+        # KWin — after the game toggles its grab off/on (e.g. inventory in
+        # Stalcraft) the cursor escapes to a second monitor.
         geom = QApplication.primaryScreen().geometry()
-        side = self._OVERLAY_SIDE
-        x = geom.x() + (geom.width()  - side) // 2
-        y = geom.y() + (geom.height() - side) // 2
-        self.setGeometry(x, y, side, side)
+        s = self._SIDE
+        self.setGeometry(
+            geom.x() + (geom.width()  - s) // 2,
+            geom.y() + (geom.height() - s) // 2,
+            s, s,
+        )
 
+        # Override-redirect windows stay on top reliably — raise once per
+        # second to recover from rare edge cases without spamming X.
         self._raise_timer = QTimer(self)
         self._raise_timer.timeout.connect(self.raise_)
-        self._raise_timer.start(250)
+        self._raise_timer.start(1000)
+
+    def _rebuild_cache(self) -> None:
+        alpha = self.cfg["opacity"]
+        thick = self.cfg["thickness"]
+
+        self._color = QColor(self.cfg["color"])
+        self._color.setAlpha(alpha)
+
+        self._outline_col = QColor(self.cfg["outline_color"])
+        self._outline_col.setAlpha(alpha)
+
+        self._pen_color = QPen(
+            self._color, thick, Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin,
+        )
+        self._pen_outline = QPen(
+            self._outline_col, thick + 2, Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin,
+        )
 
     def apply(self, cfg: dict) -> None:
         self.cfg = cfg
+        self._rebuild_cache()
         self.update()
-
 
     def paintEvent(self, _event) -> None:
         if not self.cfg.get("enabled", True):
@@ -268,69 +193,55 @@ class CrosshairOverlay(QWidget):
         cx = self.width()  // 2
         cy = self.height() // 2
 
-        color   = _rgba(self.cfg["color"],         self.cfg["opacity"])
-        outline = _rgba(self.cfg["outline_color"], self.cfg["opacity"])
-        do_ol   = self.cfg["outline"]
+        style   = self.cfg["style"]
+        size    = self.cfg["size"]
+        gap     = self.cfg["gap"]
+        outline = self.cfg["outline"]
 
-        style = self.cfg["style"]
-        size  = self.cfg["size"]
-        thick = self.cfg["thickness"]
-        gap   = self.cfg["gap"]
+        ol_col = self._outline_col if outline else None
+        ol_pen = self._pen_outline if outline else None
 
         if style in ("dot", "dot+cross"):
-            _draw_dot(p, cx, cy, size, color, outline if do_ol else None)
+            _draw_dot(p, cx, cy, size, self._color, ol_col)
         if style in ("cross", "dot+cross"):
-            _draw_cross(p, cx, cy, size, thick, gap, color, outline if do_ol else None)
+            _draw_cross(p, cx, cy, size, gap, self._pen_color, ol_pen)
         if style == "circle":
-            _draw_circle(p, cx, cy, size, thick, color, outline if do_ol else None)
+            _draw_circle(p, cx, cy, size, self._pen_color, ol_pen)
 
         p.end()
 
 
-def _rgba(hex_color: str, alpha: int) -> QColor:
-    c = QColor(hex_color)
-    c.setAlpha(alpha)
-    return c
-
-
 def _draw_dot(p: QPainter, cx, cy, r, color, outline) -> None:
-    if outline:
-        p.setPen(Qt.PenStyle.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
+    if outline is not None:
         p.setBrush(QBrush(outline))
         p.drawEllipse(QPoint(cx, cy), r + 1, r + 1)
-    p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QBrush(color))
     p.drawEllipse(QPoint(cx, cy), r, r)
 
 
-def _draw_cross(p: QPainter, cx, cy, size, thick, gap, color, outline) -> None:
+def _draw_cross(p: QPainter, cx, cy, size, gap, pen_color, pen_outline) -> None:
     arms = size * 5
-
-    def lines(pen: QPen) -> None:
-        p.setPen(pen)
-        p.drawLine(cx - arms, cy,   cx - gap,  cy)
-        p.drawLine(cx + gap,  cy,   cx + arms, cy)
-        p.drawLine(cx,  cy - arms,  cx,  cy - gap)
-        p.drawLine(cx,  cy + gap,   cx,  cy + arms)
-
-    if outline:
-        pen = QPen(outline, thick + 2, Qt.PenStyle.SolidLine,
-                   Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-        lines(pen)
-
-    pen = QPen(color, thick, Qt.PenStyle.SolidLine,
-               Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-    lines(pen)
+    if pen_outline is not None:
+        p.setPen(pen_outline)
+        p.drawLine(cx - arms, cy, cx - gap,  cy)
+        p.drawLine(cx + gap,  cy, cx + arms, cy)
+        p.drawLine(cx, cy - arms, cx, cy - gap)
+        p.drawLine(cx, cy + gap,  cx, cy + arms)
+    p.setPen(pen_color)
+    p.drawLine(cx - arms, cy, cx - gap,  cy)
+    p.drawLine(cx + gap,  cy, cx + arms, cy)
+    p.drawLine(cx, cy - arms, cx, cy - gap)
+    p.drawLine(cx, cy + gap,  cx, cy + arms)
 
 
-def _draw_circle(p: QPainter, cx, cy, size, thick, color, outline) -> None:
+def _draw_circle(p: QPainter, cx, cy, size, pen_color, pen_outline) -> None:
     r = size * 6
-    if outline:
-        p.setPen(QPen(outline, thick + 2))
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(QPoint(cx, cy), r, r)
-    p.setPen(QPen(color, thick))
     p.setBrush(Qt.BrushStyle.NoBrush)
+    if pen_outline is not None:
+        p.setPen(pen_outline)
+        p.drawEllipse(QPoint(cx, cy), r, r)
+    p.setPen(pen_color)
     p.drawEllipse(QPoint(cx, cy), r, r)
 
 
@@ -464,10 +375,9 @@ def _make_tray_icon(hex_color: str) -> QIcon:
 
 
 class TrayController:
-    def __init__(self, overlay: CrosshairOverlay, cfg: dict, locker: CursorLocker) -> None:
+    def __init__(self, overlay: CrosshairOverlay, cfg: dict) -> None:
         self.overlay = overlay
         self.cfg = cfg
-        self._locker = locker
         self.tray = QSystemTrayIcon()
         self._refresh_icon()
         self._build_menu()
@@ -481,20 +391,10 @@ class TrayController:
     def _build_menu(self) -> None:
         menu = QMenu()
 
-        self._toggle_act = QAction(T("disable"), menu)
+        self._toggle_act = QAction(
+            T("disable") if self.cfg["enabled"] else T("enable"), menu)
         self._toggle_act.triggered.connect(self._toggle)
         menu.addAction(self._toggle_act)
-
-        if self._locker.available:
-            lock_label = (T("cursor_lock_off")
-                          if self.cfg.get("cursor_lock", False)
-                          else T("cursor_lock_on"))
-            self._lock_act = QAction(lock_label, menu)
-        else:
-            self._lock_act = QAction(T("cursor_lock_na"), menu)
-            self._lock_act.setEnabled(False)
-        self._lock_act.triggered.connect(self._toggle_cursor_lock)
-        menu.addAction(self._lock_act)
 
         settings_act = QAction(T("settings"), menu)
         settings_act.triggered.connect(self._open_settings)
@@ -522,17 +422,6 @@ class TrayController:
         self._refresh_icon()
         save_config(self.cfg)
 
-    def _toggle_cursor_lock(self) -> None:
-        self.cfg["cursor_lock"] = not self.cfg.get("cursor_lock", False)
-        if self.cfg["cursor_lock"]:
-            geom = QApplication.primaryScreen().geometry()
-            self._locker.lock(geom.x(), geom.y(), geom.width(), geom.height())
-            self._lock_act.setText(T("cursor_lock_off"))
-        else:
-            self._locker.unlock()
-            self._lock_act.setText(T("cursor_lock_on"))
-        save_config(self.cfg)
-
     def _open_settings(self) -> None:
         dlg = SettingsDialog(self.cfg)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -555,14 +444,7 @@ def main() -> None:
     overlay = CrosshairOverlay(cfg)
     overlay.show()
 
-    locker = CursorLocker()
-    if cfg.get("cursor_lock", False) and locker.available:
-        geom = QApplication.primaryScreen().geometry()
-        locker.lock(geom.x(), geom.y(), geom.width(), geom.height())
-
-    app.aboutToQuit.connect(locker.unlock)
-
-    _tray = TrayController(overlay, cfg, locker)  # keep alive
+    _tray = TrayController(overlay, cfg)  # keep alive
 
     sys.exit(app.exec())
 
