@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Linux Overlay Sight
+Name[ru]=Linux Overlay Sight
+GenericName=Crosshair Overlay
+GenericName[ru]=Прицел поверх окон
+Comment=Crosshair overlay for fullscreen games on KDE Plasma / XWayland
+Comment[ru]=Прицел поверх полноэкранных игр для KDE Plasma / XWayland
+Exec=linux-overlay-sight
+Icon=linux-overlay-sight
+Terminal=false
+StartupNotify=false
+StartupWMClass=LOS
+Categories=Utility;Qt;
+Keywords=crosshair;overlay;aim;sight;game;wine;proton;
+Keywords[ru]=прицел;оверлей;игра;вайн;протон;

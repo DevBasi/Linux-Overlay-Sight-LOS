@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-build:
+    name: Syntax + wheel build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils
+
+      - name: Syntax check
+        run: python -m py_compile aim_overlay.py
+
+      - name: Validate .desktop
+        run: desktop-file-validate packaging/linux-overlay-sight.desktop
+
+      - name: Validate PKGBUILD syntax
+        run: |
+          bash -n packaging/aur/PKGBUILD
+          bash -n packaging/aur-git/PKGBUILD
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Inspect wheel
+        run: python -m zipfile -l dist/*.whl

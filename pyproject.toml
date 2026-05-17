@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "linux-overlay-sight"
+version = "1.0.0"
+description = "Crosshair overlay for Linux games on KDE Plasma / XWayland"
+readme = "README_EN.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [
+    { name = "DevBasi" },
+]
+keywords = ["crosshair", "overlay", "aim", "kde", "wayland", "xwayland", "gaming"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Games/Entertainment",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "PyQt6>=6.4",
+]
+
+[project.urls]
+Homepage      = "https://github.com/DevBasi/Linux-Overlay-Sight-LOS"
+Repository    = "https://github.com/DevBasi/Linux-Overlay-Sight-LOS"
+Issues        = "https://github.com/DevBasi/Linux-Overlay-Sight-LOS/issues"
+
+[project.scripts]
+linux-overlay-sight = "aim_overlay:main"
+los                 = "aim_overlay:main"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["aim_overlay.py"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/aim_overlay.py",
+    "/README.md",
+    "/README_EN.md",
+    "/LICENSE",
+    "/pyproject.toml",
+    "/assets",
+    "/packaging",
+]

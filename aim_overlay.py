@@ -8,10 +8,11 @@ import sys
 import json
 import os
 import locale
+import argparse
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QSystemTrayIcon, QMenu,
+    QApplication, QWidget, QSystemTrayIcon, QMenu, QMessageBox,
     QColorDialog, QDialog, QVBoxLayout, QHBoxLayout,
     QFormLayout, QLabel, QPushButton, QSpinBox,
     QComboBox, QSlider, QCheckBox, QGroupBox, QDialogButtonBox,
@@ -22,7 +23,12 @@ from PyQt6.QtGui import (
 )
 
 
-CONFIG_PATH = Path.home() / ".config" / "los.json"
+__version__ = "1.0.0"
+APP_ID      = "linux-overlay-sight"
+
+CONFIG_PATH = Path(
+    os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")
+) / "los.json"
 
 DEFAULTS: dict = {
     "color":         "#00FF41",
@@ -73,6 +79,8 @@ _S: dict = {
         "quit":        "Выход",
         "status_on":   "вкл",
         "status_off":  "выкл",
+        "tray_missing_title": "Системный трей недоступен",
+        "tray_missing_body":  "В системе не найден systray. LOS продолжит работу, но управлять через значок не получится.",
     },
     "en": {
         "win_title":   "LOS — Settings",
@@ -93,6 +101,8 @@ _S: dict = {
         "quit":        "Quit",
         "status_on":   "on",
         "status_off":  "off",
+        "tray_missing_title": "System tray unavailable",
+        "tray_missing_body":  "No system tray detected. LOS will keep running, but tray controls won't be available.",
     },
 }
 
@@ -114,8 +124,30 @@ def save_config(cfg: dict) -> None:
     CONFIG_PATH.write_text(json.dumps(keep, indent=2))
 
 
+def _app_icon() -> QIcon:
+    """Look for an installed app icon, then fall back to the in-tree asset,
+    then to a programmatically drawn one."""
+    icon = QIcon.fromTheme(APP_ID)
+    if not icon.isNull():
+        return icon
+
+    candidates = [
+        Path(__file__).resolve().parent / "assets" / "linux-overlay-sight.svg",
+        Path(__file__).resolve().parent / "assets" / "linux-overlay-sight.png",
+        Path("/usr/share/icons/hicolor/scalable/apps/linux-overlay-sight.svg"),
+        Path("/usr/share/icons/hicolor/256x256/apps/linux-overlay-sight.png"),
+        Path("/usr/share/pixmaps/linux-overlay-sight.png"),
+    ]
+    for p in candidates:
+        if p.is_file():
+            return QIcon(str(p))
+
+    return _make_tray_icon("#00FF41")
+
+
 
 class CrosshairOverlay(QWidget):
+    # 400 px covers the largest configurable crosshair (size 30 → circle r=180).
     _SIDE = 400
 
     def __init__(self, cfg: dict) -> None:
@@ -138,6 +170,10 @@ class CrosshairOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
+        # Small window centered on the primary screen. A screen-spanning
+        # XWayland overlay breaks fullscreen games' pointer confinement under
+        # KWin — after the game toggles its grab off/on (e.g. inventory in
+        # Stalcraft) the cursor escapes to a second monitor.
         geom = QApplication.primaryScreen().geometry()
         s = self._SIDE
         self.setGeometry(
@@ -146,6 +182,8 @@ class CrosshairOverlay(QWidget):
             s, s,
         )
 
+        # Override-redirect windows stay on top reliably — raise once per
+        # second to recover from rare edge cases without spamming X.
         self._raise_timer = QTimer(self)
         self._raise_timer.timeout.connect(self.raise_)
         self._raise_timer.start(1000)
@@ -423,19 +461,49 @@ class TrayController:
 
 
 
-def main() -> None:
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        prog="linux-overlay-sight",
+        description="Crosshair overlay for Linux games (KDE Plasma / XWayland).",
+    )
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    p.add_argument(
+        "--config", metavar="PATH", type=Path, default=None,
+        help=f"override config path (default: {CONFIG_PATH})",
+    )
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(sys.argv[1:] if argv is None else argv)
+    if args.config is not None:
+        global CONFIG_PATH
+        CONFIG_PATH = args.config
+
+    # XWayland windows are the only way to stay above fullscreen Wine/Proton
+    # games on KWin Wayland. WindowTransparentForInput + X11BypassWindowManagerHint
+    # do not work on the native Wayland Qt platform.
     if "WAYLAND_DISPLAY" in os.environ and "QT_QPA_PLATFORM" not in os.environ:
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
-    app = QApplication(sys.argv)
+    app = QApplication(sys.argv[:1])
     app.setApplicationName("LOS")
+    app.setApplicationDisplayName("Linux Overlay Sight")
+    app.setDesktopFileName(APP_ID)
+    app.setApplicationVersion(__version__)
+    app.setWindowIcon(_app_icon())
     app.setQuitOnLastWindowClosed(False)
 
     cfg     = load_config()
     overlay = CrosshairOverlay(cfg)
     overlay.show()
 
-    _tray = TrayController(overlay, cfg)  
+    if QSystemTrayIcon.isSystemTrayAvailable():
+        _tray = TrayController(overlay, cfg)  # noqa: F841  — keep alive
+    else:
+        # Headless trays do happen on some minimal setups. Warn once and
+        # carry on — the crosshair itself still works.
+        QMessageBox.warning(None, T("tray_missing_title"), T("tray_missing_body"))
 
     sys.exit(app.exec())
 

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# venv
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.whl
+*.tar.gz
+*.AppImage
+
+# AUR build artifacts
+packaging/aur*/pkg/
+packaging/aur*/src/
+packaging/aur*/*.tar.zst
+packaging/aur*/*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
