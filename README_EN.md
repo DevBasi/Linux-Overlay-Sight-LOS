@@ -58,7 +58,7 @@ yay -S linux-overlay-sight-git
 ### 🅱 AppImage (any distribution)
 
 ```bash
-wget https://github.com/DevBasi/Linux-Overlay-Sight-LOS/releases/latest/download/linux-overlay-sight-1.0.0-x86_64.AppImage
+wget https://github.com/DevBasi/Linux-Overlay-Sight-LOS/releases/latest/download/linux-overlay-sight-1.0.1-x86_64.AppImage
 chmod +x linux-overlay-sight-*.AppImage
 ./linux-overlay-sight-*.AppImage
 ```

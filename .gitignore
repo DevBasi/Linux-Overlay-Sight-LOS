@@ -24,6 +24,8 @@ packaging/aur*/*.tar.gz
 # IDE / agents
 .vscode/
 .idea/
+.agents/
+.codex/
 .claude/
 *.swp
 *.local.json
